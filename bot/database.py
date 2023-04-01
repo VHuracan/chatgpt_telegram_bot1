@@ -31,6 +31,7 @@ class Database:
         username: str = "",
         first_name: str = "",
         last_name: str = "",
+        user_request_count: int = 5,
     ):
         user_dict = {
             "_id": user_id,
@@ -39,7 +40,7 @@ class Database:
             "username": username,
             "first_name": first_name,
             "last_name": last_name,
-
+            "user_request_count": user_request_count,
             "last_interaction": datetime.now(),
             "first_seen": datetime.now(),
             
@@ -125,3 +126,13 @@ class Database:
             {"_id": dialog_id, "user_id": user_id},
             {"$set": {"messages": dialog_messages}}
         )
+    def add_new_message_count(self, user_id: int):
+        self.check_if_user_exists(user_id, raise_exception=True)
+        if self.get_user_attribute(user_id, "user_request_count") is None:
+            self.set_user_attribute(user_id, "user_request_count", 5)
+            
+    def minus_message_count(self, user_id: int):
+        self.check_if_user_exists(user_id, raise_exception=True)
+        request_count = self.get_user_attribute(user_id, "user_request_count")
+        if request_count >0:
+            self.set_user_attribute(user_id, "user_request_count", request_count -1)
