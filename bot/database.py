@@ -31,20 +31,27 @@ class Database:
         username: str = "",
         first_name: str = "",
         last_name: str = "",
+<<<<<<< HEAD
         user_request_count: int = 5,
         user_request_date = datetime.now(),
         prem_datetime: str = "",
         prem_mounts: int = "0",
+=======
+>>>>>>> parent of efb5849 (Начал работать с ботом и ограничением)
     ):
         user_dict = {
             "_id": user_id,
             "username": username,
             "first_name": first_name,
             "last_name": last_name,
+<<<<<<< HEAD
             "user_request_count": user_request_count,
             "user_request_date": datetime.now(),
             "prem_datetime": datetime.now(),
             "prem_mounts" : 0,
+=======
+
+>>>>>>> parent of efb5849 (Начал работать с ботом и ограничением)
             "last_interaction": datetime.now(),
             "first_seen": datetime.now(),
             
@@ -130,6 +137,7 @@ class Database:
             {"_id": dialog_id, "user_id": user_id},
             {"$set": {"messages": dialog_messages}}
         )
+<<<<<<< HEAD
     def add_new_message_count(self, user_id: int, days: int):
         self.check_if_user_exists(user_id, raise_exception=True)
         if self.get_user_attribute(user_id, "user_request_count") is None:
@@ -167,3 +175,5 @@ class Database:
             self.set_user_attribute(user_id, "prem_datetime", datetime.now())
         else:
             self.set_user_attribute(user_id, "prem_datetime", prem_date)
+=======
+>>>>>>> parent of efb5849 (Начал работать с ботом и ограничением)

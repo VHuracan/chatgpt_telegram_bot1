@@ -41,6 +41,7 @@ db = database.Database()
 logger = logging.getLogger(__name__)
 user_semaphores = {}
 
+<<<<<<< HEAD
 
 HELP_MESSAGE = """Список команд:
 ⚪ /retry – Регенерировать предидущий запрос
@@ -50,6 +51,15 @@ HELP_MESSAGE = """Список команд:
 ⚪ /balance – Показать баланс
 ⚪ /help – Помощь
 ⚪ /premium - Подписка на премиум
+=======
+HELP_MESSAGE = """Commands:
+⚪ /retry – Regenerate last bot answer
+⚪ /new – Start new dialog
+⚪ /mode – Select chat mode
+⚪ /settings – Show settings
+⚪ /balance – Show balance
+⚪ /help – Show help
+>>>>>>> parent of efb5849 (Начал работать с ботом и ограничением)
 """
 
 
@@ -101,10 +111,10 @@ async def start_handle(update: Update, context: CallbackContext):
     db.set_user_attribute(user_id, "last_interaction", datetime.now())
     db.start_new_dialog(user_id)
     
-    reply_text = "Привет Я <b>ChatGPT Telegram бот</b> я работаю с помощью GPT-3.5 Turbo OpenAI API 🤖, ты можешь использовать команды и обращаться ко мне на Русском или Английском языке\n\n"
+    reply_text = "Hi! I'm <b>ChatGPT</b> bot implemented with GPT-3.5 OpenAI API 🤖\n\n"
     reply_text += HELP_MESSAGE
 
-    reply_text += "\nАсейчас... спроси меня о чем нибудь!"
+    reply_text += "\nAnd now... ask me anything!"
     
     await update.message.reply_text(reply_text, parse_mode=ParseMode.HTML)
 
@@ -125,7 +135,7 @@ async def retry_handle(update: Update, context: CallbackContext):
 
     dialog_messages = db.get_dialog_messages(user_id, dialog_id=None)
     if len(dialog_messages) == 0:
-        await update.message.reply_text("Нет сообщений 🤷‍♂️")
+        await update.message.reply_text("No message to retry 🤷‍♂️")
         return
 
     last_dialog_message = dialog_messages.pop()
@@ -142,10 +152,10 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
         
     await register_user_if_not_exists(update, context, update.message.from_user)
     if await is_previous_message_not_answered_yet(update, context): return
-    
-    
+
     user_id = update.message.from_user.id
     chat_mode = db.get_user_attribute(user_id, "current_chat_mode")
+<<<<<<< HEAD
     await check_user_request(user_id)
     user_request_count = db.get_user_attribute(user_id, "user_request_count")
     
@@ -157,6 +167,8 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
          # TODO: проверка подписки пользователя
              await update.message.reply_text("Вы превысили лимит запросов. Остаток запросов " + str(user_request_count))
              return
+=======
+>>>>>>> parent of efb5849 (Начал работать с ботом и ограничением)
     
     db.minus_message_count(user_id)
     
@@ -165,7 +177,7 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
         if use_new_dialog_timeout:
             if (datetime.now() - db.get_user_attribute(user_id, "last_interaction")).seconds > config.new_dialog_timeout and len(db.get_dialog_messages(user_id)) > 0:
                 db.start_new_dialog(user_id)
-                await update.message.reply_text(f"Начало нового диалога из-за тайм-аута (<b>{openai_utils.CHAT_MODES[chat_mode]['name']}</b> mode) ✅", parse_mode=ParseMode.HTML)
+                await update.message.reply_text(f"Starting new dialog due to timeout (<b>{openai_utils.CHAT_MODES[chat_mode]['name']}</b> mode) ✅", parse_mode=ParseMode.HTML)
         db.set_user_attribute(user_id, "last_interaction", datetime.now())
 
         # send typing action
@@ -208,14 +220,14 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
                 elif status == "finished":
                     status, answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed = gen_item
                 else:
-                    raise ValueError(f"Статус {status} неизвестен")
+                    raise ValueError(f"Streaming status {status} is unknown")
 
                 answer = answer[:4096]  # telegram message limit
                 if i == 0:  # send first message (then it'll be edited if message streaming is enabled)
                     try:                    
                         sent_message = await update.message.reply_text(answer, parse_mode=parse_mode)
                     except telegram.error.BadRequest as e:
-                        if str(e).startswith("Сообщение должно быть непустым"):  # first answer chunk from openai was empty
+                        if str(e).startswith("Message must be non-empty"):  # first answer chunk from openai was empty
                             i = -1  # try again to send first message
                             continue
                         else:
@@ -228,7 +240,7 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
                     try:                    
                         await context.bot.edit_message_text(answer, chat_id=sent_message.chat_id, message_id=sent_message.message_id, parse_mode=parse_mode)
                     except telegram.error.BadRequest as e:
-                        if str(e).startswith("Сообщение не изменено"):
+                        if str(e).startswith("Message is not modified"):
                             continue
                         else:
                             await context.bot.edit_message_text(answer, chat_id=sent_message.chat_id, message_id=sent_message.message_id)
@@ -247,7 +259,7 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
 
             db.update_n_used_tokens(user_id, current_model, n_input_tokens, n_output_tokens) 
         except Exception as e:
-            error_text = f"Что-то пошло не так во время завершения. Причина: {e}"
+            error_text = f"Something went wrong during completion. Reason: {e}"
             logger.error(error_text)
             await update.message.reply_text(error_text)
             return
@@ -255,9 +267,9 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
         # send message if some messages were removed from the context
         if n_first_dialog_messages_removed > 0:
             if n_first_dialog_messages_removed == 1:
-                text = "✍️ <i>Note:</i> Ваш текущий диалог слишком длинный, поэтому ваше <b>первое сообщение</b> было удалено из контекста.\n Отправьте команду /new, чтобы начать новый диалог"
+                text = "✍️ <i>Note:</i> Your current dialog is too long, so your <b>first message</b> was removed from the context.\n Send /new command to start new dialog"
             else:
-                text = f"✍️ <i>Примечание.</i> Ваш текущий диалог слишком длинный, поэтому <b>{n_first_dialog_messages_removed} первые сообщения</b> были удалены из контекста.\n Отправьте команду /new, чтобы начать новый диалог"
+                text = f"✍️ <i>Note:</i> Your current dialog is too long, so <b>{n_first_dialog_messages_removed} first messages</b> were removed from the context.\n Send /new command to start new dialog"
             await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
@@ -266,7 +278,7 @@ async def is_previous_message_not_answered_yet(update: Update, context: Callback
 
     user_id = update.message.from_user.id
     if user_semaphores[user_id].locked():
-        text = "⏳ <b>Подождите</b> ответа на предыдущее сообщение"
+        text = "⏳ Please <b>wait</b> for a reply to the previous message"
         await update.message.reply_text(text, reply_to_message_id=update.message.id, parse_mode=ParseMode.HTML)
         return True
     else:
@@ -314,7 +326,7 @@ async def new_dialog_handle(update: Update, context: CallbackContext):
     db.set_user_attribute(user_id, "last_interaction", datetime.now())
 
     db.start_new_dialog(user_id)
-    await update.message.reply_text("Начитаем новый диалог ✅")
+    await update.message.reply_text("Starting new dialog ✅")
 
     chat_mode = db.get_user_attribute(user_id, "current_chat_mode")
     await update.message.reply_text(f"{openai_utils.CHAT_MODES[chat_mode]['welcome_message']}", parse_mode=ParseMode.HTML)
@@ -332,7 +344,7 @@ async def show_chat_modes_handle(update: Update, context: CallbackContext):
         keyboard.append([InlineKeyboardButton(chat_mode_dict["name"], callback_data=f"set_chat_mode|{chat_mode}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text("Выберите режим бота:", reply_markup=reply_markup)
+    await update.message.reply_text("Select chat mode:", reply_markup=reply_markup)
 
 
 async def set_chat_mode_handle(update: Update, context: CallbackContext):
@@ -402,7 +414,7 @@ async def set_settings_handle(update: Update, context: CallbackContext):
     try:                    
         await query.edit_message_text(text, reply_markup=reply_markup, parse_mode=ParseMode.HTML)
     except telegram.error.BadRequest as e:
-        if str(e).startswith("Сообщение не изменено"):
+        if str(e).startswith("Message is not modified"):
             pass
     
 
@@ -436,8 +448,8 @@ async def show_balance_handle(update: Update, context: CallbackContext):
     
     total_n_spent_dollars += voice_recognition_n_spent_dollars    
 
-    text = f"Вы потратили <b>{total_n_spent_dollars:.03f}$</b>\n"
-    text += f"Вы использовали <b>{total_n_used_tokens}</b> tokens\n\n"
+    text = f"You spent <b>{total_n_spent_dollars:.03f}$</b>\n"
+    text += f"You used <b>{total_n_used_tokens}</b> tokens\n\n"
     text += details_text
 
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
@@ -560,12 +572,12 @@ async def show_premium_handle(update: Update, context: CallbackContext):
 
 
 async def edited_message_handle(update: Update, context: CallbackContext):
-    text = "🥲 К сожалению, <b>редактирование</b> сообщений не поддерживается"
+    text = "🥲 Unfortunately, message <b>editing</b> is not supported"
     await update.edited_message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 async def error_handle(update: Update, context: CallbackContext) -> None:
-    logger.error(msg="Исключение при обработке обновления:", exc_info=context.error)
+    logger.error(msg="Exception while handling an update:", exc_info=context.error)
 
     try:
         # collect error message
@@ -573,7 +585,7 @@ async def error_handle(update: Update, context: CallbackContext) -> None:
         tb_string = "".join(tb_list)
         update_str = update.to_dict() if isinstance(update, Update) else str(update)
         message = (
-            f"При обработке обновления возникло исключение\n"
+            f"An exception was raised while handling an update\n"
             f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}"
             "</pre>\n\n"
             f"<pre>{html.escape(tb_string)}</pre>"
@@ -587,10 +599,11 @@ async def error_handle(update: Update, context: CallbackContext) -> None:
                 # answer has invalid characters, so we send it without parse_mode
                 await context.bot.send_message(update.effective_chat.id, message_chunk)
     except:
-        await context.bot.send_message(update.effective_chat.id, "Какая-то ошибка в обработчике ошибок")
+        await context.bot.send_message(update.effective_chat.id, "Some error in error handler")
 
 async def post_init(application: Application):
     await application.bot.set_my_commands([
+<<<<<<< HEAD
         BotCommand("/new", "Начать новый диалог"),
         BotCommand("/mode", "Выбрать режим работы бота"),
         BotCommand("/retry", "Регенерировать предидущий запрос"),
@@ -598,6 +611,14 @@ async def post_init(application: Application):
         BotCommand("/balance", "Показать баланс"),
         BotCommand("/settings", "Показать настройки"),
         BotCommand("/help", "Помощь"),
+=======
+        BotCommand("/new", "Start new dialog"),
+        BotCommand("/mode", "Select chat mode"),
+        BotCommand("/retry", "Re-generate response for previous query"),
+        BotCommand("/balance", "Show balance"),
+        BotCommand("/settings", "Show settings"),
+        BotCommand("/help", "Show help message"),
+>>>>>>> parent of efb5849 (Начал работать с ботом и ограничением)
     ])
 
 def run_bot() -> None:
