@@ -7,7 +7,7 @@ import json
 import tempfile
 import pydub
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import telegram
 from telegram import (
@@ -33,11 +33,14 @@ import config
 import database
 import openai_utils
 
+from ym import ymquickpay
+from ym import checkpay
 
 # setup
 db = database.Database()
 logger = logging.getLogger(__name__)
 user_semaphores = {}
+
 
 HELP_MESSAGE = """Список команд:
 ⚪ /retry – Регенерировать предидущий запрос
@@ -46,6 +49,7 @@ HELP_MESSAGE = """Список команд:
 ⚪ /settings – Показать настройки
 ⚪ /balance – Показать баланс
 ⚪ /help – Помощь
+⚪ /premium - Подписка на премиум
 """
 
 
@@ -142,17 +146,19 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
     
     user_id = update.message.from_user.id
     chat_mode = db.get_user_attribute(user_id, "current_chat_mode")
+    await check_user_request(user_id)
     user_request_count = db.get_user_attribute(user_id, "user_request_count")
     
     if user_request_count is None:
         db.add_new_message_count(user_id)
     
     
-    if user_request_count >= 0:
+    if user_request_count <= 0:
          # TODO: проверка подписки пользователя
-             db.minus_message_count(user_id)
-             await update.message.reply_text("Вы превысили лимит запросов. Остаток запросов " + str(user_request_count-1))
+             await update.message.reply_text("Вы превысили лимит запросов. Остаток запросов " + str(user_request_count))
              return
+    
+    db.minus_message_count(user_id)
     
     async with user_semaphores[user_id]:
         # new dialog timeout
@@ -435,6 +441,122 @@ async def show_balance_handle(update: Update, context: CallbackContext):
     text += details_text
 
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+    
+#Проверка не наступила ли дата обновления количества запросов
+async def check_user_request(user_id: int):
+    user_request_count = db.get_user_attribute(user_id, "user_request_count")
+    user_request_date = db.get_user_attribute(user_id, "user_request_date")
+
+    if user_request_count is None:
+        db.add_new_message_count(user_id, 0)
+
+    if user_request_date is None or not isinstance(user_request_date, datetime):
+        user_request_date = datetime.now()
+        db.add_new_message_date(user_id, user_request_date)
+    else:
+        # user_request_date is already a datetime object, no need to convert it
+        pass
+
+    if (user_request_date.date() == datetime.now().date()):
+        return
+            
+    
+
+    if user_request_date.date() < datetime.now().date():
+        is_premium = check_prem_pay(user_id)
+        if is_premium:
+            db.add_new_message_count(user_id, 100)
+        else:
+            db.add_new_message_count(user_id, 3)
+
+        db.add_new_message_date(user_id)
+
+        
+        
+
+async def check_prem_pay(_user_id: int):
+    user_id = _user_id
+    db.set_user_attribute(user_id, "last_interaction", datetime.now())
+    
+    
+    prem_datetime = db.get_user_attribute(user_id, "prem_datetime")
+    if prem_datetime is None:
+        db.add_new_prem_date(user_id)
+    
+    prem_mounts = db.get_user_attribute(user_id, "prem_mounts")
+    if prem_mounts is None:
+        db.add_new_prem_days(user_id)
+    
+    prem_datetime = db.get_user_attribute(user_id, "prem_datetime")
+    print(prem_datetime)
+    label = str(user_id)
+    pay_list = checkpay.ympaycheck(label)
+    if len(pay_list) > 0:
+        for pay_date in pay_list:
+            if pay_date > prem_datetime:
+                db.add_new_prem_date(user_id, pay_date)
+                db.add_new_prem_days(user_id, 30)
+                return True
+            else:
+                return False
+            
+        
+    
+async def check_prem(_user_id: int):
+    
+    user_id = _user_id
+    
+    prem_datetime = db.get_user_attribute(user_id, "prem_datetime")
+    
+    if prem_datetime is None:
+        db.add_new_prem_date(user_id)
+    
+    prem_mounts = db.get_user_attribute(user_id, "prem_mounts")
+    if prem_mounts is None:
+        db.add_new_prem_days(user_id)
+    
+    # преобразование строки даты и времени в объект datetime
+    if isinstance(prem_datetime, str):
+        prem_datetime = datetime.strptime(prem_datetime, "%Y-%m-%d %H:%M:%S")
+
+    # вычисление даты окончания премиум-подписки
+    prem_end_date = prem_datetime + timedelta(days=prem_mounts)
+    # вывод даты окончания премиум-подписки
+    #print(prem_end_date.strftime("%Y-%m-%d %H:%M:%S"))
+    if (prem_end_date > datetime.now()):
+        return True, prem_end_date
+    else:
+        return False, datetime.now()
+
+async def show_premium_handle(update: Update, context: CallbackContext):
+    await register_user_if_not_exists(update, context, update.message.from_user)
+
+    user_id = update.message.from_user.id 
+    db.set_user_attribute(user_id, "last_interaction", datetime.now())
+    
+    check_pr = await check_prem_pay(user_id)
+    prem_status, prem_end = await check_prem(user_id)
+    
+    
+    if (prem_status):
+        keyboard = []
+        keyboard.append([InlineKeyboardButton(text="Картой 250р на 1 месяц", url=ymquickpay.ympay1m(user_id))])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        prem_end_date_str = prem_end.date().strftime("%Y-%m-%d")
+        await check_user_request(user_id)
+        user_request_count = db.get_user_attribute(user_id, "user_request_count")
+        if check_pr:
+            db.add_new_message_count(user_id, 100)
+            db.add_new_message_date(user_id)
+            await update.message.reply_html("Поздравляем! Платеж успешно проведён. У вас активная подписка до <b>{date}</b>\nКоличество оставшихся сообщений в эти сутки <b>{request}</b>".format(date=prem_end_date_str, request=user_request_count), reply_markup=reply_markup)
+            
+        else:
+            await update.message.reply_html("У вас активная подписка до <b>{date}</b>\nКоличество оставшихся сообщений в эти сутки <b>{request}</b>. Нажмите /premuim для проверки новых платежей".format(date=prem_end_date_str, request=user_request_count), reply_markup=reply_markup)
+    else:
+        keyboard = []
+        keyboard.append([InlineKeyboardButton(text="Картой 250р на 1 месяц", url=ymquickpay.ympay1m(user_id))])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("Нажмите /premuim для проверки новых платежей или Выберите подписку и способ оплаты:", reply_markup=reply_markup)
 
 
 async def edited_message_handle(update: Update, context: CallbackContext):
@@ -472,6 +594,7 @@ async def post_init(application: Application):
         BotCommand("/new", "Начать новый диалог"),
         BotCommand("/mode", "Выбрать режим работы бота"),
         BotCommand("/retry", "Регенерировать предидущий запрос"),
+        BotCommand("/premium", "Подписка на премиум"),
         BotCommand("/balance", "Показать баланс"),
         BotCommand("/settings", "Показать настройки"),
         BotCommand("/help", "Помощь"),
@@ -511,6 +634,7 @@ def run_bot() -> None:
 
     application.add_handler(CommandHandler("balance", show_balance_handle, filters=user_filter))
     
+    application.add_handler(CommandHandler("premium", show_premium_handle, filters=user_filter))
     application.add_error_handler(error_handle)
     
     # start the bot

@@ -32,15 +32,19 @@ class Database:
         first_name: str = "",
         last_name: str = "",
         user_request_count: int = 5,
+        user_request_date = datetime.now(),
+        prem_datetime: str = "",
+        prem_mounts: int = "0",
     ):
         user_dict = {
             "_id": user_id,
-            "chat_id": chat_id,
-
             "username": username,
             "first_name": first_name,
             "last_name": last_name,
             "user_request_count": user_request_count,
+            "user_request_date": datetime.now(),
+            "prem_datetime": datetime.now(),
+            "prem_mounts" : 0,
             "last_interaction": datetime.now(),
             "first_seen": datetime.now(),
             
@@ -126,13 +130,40 @@ class Database:
             {"_id": dialog_id, "user_id": user_id},
             {"$set": {"messages": dialog_messages}}
         )
-    def add_new_message_count(self, user_id: int):
+    def add_new_message_count(self, user_id: int, days: int):
         self.check_if_user_exists(user_id, raise_exception=True)
         if self.get_user_attribute(user_id, "user_request_count") is None:
-            self.set_user_attribute(user_id, "user_request_count", 5)
+            self.set_user_attribute(user_id, "user_request_count", 0)
+        else:
+            self.set_user_attribute(user_id, "user_request_count", days)
+    
+    def add_new_message_date(self, user_id: int):
+        self.check_if_user_exists(user_id, raise_exception=True)
+        print(f"User request count: {self.get_user_attribute(user_id, 'user_request_count')}")
+        if self.get_user_attribute(user_id, "user_request_date") is None:
+            self.set_user_attribute(user_id, "user_request_date", datetime.now())
+        else:
+            self.set_user_attribute(user_id, "user_request_date", datetime.now())
+
             
     def minus_message_count(self, user_id: int):
         self.check_if_user_exists(user_id, raise_exception=True)
         request_count = self.get_user_attribute(user_id, "user_request_count")
         if request_count >0:
             self.set_user_attribute(user_id, "user_request_count", request_count -1)
+
+    def add_new_prem_days(self, user_id: int, days: int):
+        self.check_if_user_exists(user_id, raise_exception=True)
+        if days is None and self.get_user_attribute(user_id, "prem_mounts") is None:
+            self.set_user_attribute(user_id, "prem_mounts", 0)
+        else:
+            days_lost = self.get_user_attribute(user_id, "prem_mounts")
+            self.set_user_attribute(user_id, "prem_mounts", days+days_lost)
+
+    
+    def add_new_prem_date(self, user_id: int, prem_date: datetime):
+        self.check_if_user_exists(user_id, raise_exception=True)
+        if prem_date is None and self.get_user_attribute(user_id, "prem_datetime") is None:
+            self.set_user_attribute(user_id, "prem_datetime", datetime.now())
+        else:
+            self.set_user_attribute(user_id, "prem_datetime", prem_date)

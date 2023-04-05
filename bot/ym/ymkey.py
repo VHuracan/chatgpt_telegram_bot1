@@ -1,0 +1,15 @@
+from yoomoney import Authorize
+
+Authorize(
+      client_id="7074EE029BD65A41D78809B087EB4AD807042F54C335098CAC584170F60BDBD4",
+      redirect_uri="https://t.me/OpenGPTtelebot",
+      scope=["account-info",
+             "operation-history",
+             "operation-details",
+             "incoming-transfers",
+             "payment-p2p",
+             "payment-shop",
+             ]
+      )
+
+#4100118162676757.3AE1F4D6A8D90ADD92C6E60CA1987E82617335750DEFA82106B021CC2992D169C9C33FC4407BEFEBAB429B7F7BC1D48ECF8DF809B4C7347FD7E243D87DECC003E5A2626231D7849A3FB8E31E237FC24F9D89B96F370D23EF1636173FDDF5454DCD8238C7FF7D6145556F788E82A8908E6C3F2712BE7882AFDAE4011291982469
