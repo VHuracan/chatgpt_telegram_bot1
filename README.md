@@ -14,6 +14,11 @@
 <a href="https://github.com/karfly/chatgpt_telegram_bot/blob/main/static/donate/donate.md#%EF%B8%8F-donate" alt="Donate shield"><img src="https://img.shields.io/badge/-Donate-red?logo=undertale" width="100"/></a>
 </p>
 
+Мой форк ChatGPT Telegram Bot с поддержкой работы по подписке через Yoomoney и присетами.
+Расширеный функционал функционал, быстро работает
+Пресеты маркетолога, копирайтера, бизнескоуча, психоложо и многое другое.
+Для пользователей есль огканичение на дневное количество сообщений, поддерживается автоматическая оплата пользователем расширенной подписки.
+
 We all love [chat.openai.com](https://chat.openai.com), but... It's TERRIBLY laggy, has daily limits, and is only accessible through an archaic web interface.
 
 This repo is ChatGPT re-created as Telegram Bot. **And it works great.**
