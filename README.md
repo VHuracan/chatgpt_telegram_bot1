@@ -1,4 +1,4 @@
-# ChatGPT Telegram Bot: **GPT-4. Fast. No daily limits. Special chat modes**
+# Форк ChatGPT Telegram Bot с поддержкой работы по подписке через Yoomoney и присетами**
 
 <div align="center">
 <img src="https://raw.githubusercontent.com/karfly/chatgpt_telegram_bot/main/static/header.png" align="center" style="width: 100%" />
